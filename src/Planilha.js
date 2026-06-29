@@ -251,9 +251,13 @@ function listRegras() {
 }
 
 function listEmailsByStatus(status) {
-  return listRows_(getSheetBySchema_('Emails'), rowToEmail).filter(function filterStatus(email) {
+  return listEmails().filter(function filterStatus(email) {
     return email.status === status;
   });
+}
+
+function listEmails() {
+  return listRows_(getSheetBySchema_('Emails'), rowToEmail);
 }
 
 function findEmailRow_(sheet, idInterno) {
@@ -308,6 +312,7 @@ if (typeof module !== 'undefined' && module.exports) {
     appendEmail,
     updateEmailStatus,
     getEmailById,
+    listEmails,
     listEmailsByStatus,
     appendLog,
     listContas,

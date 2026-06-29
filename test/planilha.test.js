@@ -6,6 +6,7 @@ const {
   gerarIdInterno,
   getEmailById,
   getSheetSchemas,
+  listEmails,
   listContas,
   listEmailsByStatus,
   listRegras,
@@ -157,6 +158,7 @@ describe('Planilha - SpreadsheetApp mockado', () => {
       status: 'executado',
       acao_executada: 'arquivar',
     });
+    expect(listEmails()).toHaveLength(1);
     expect(listEmailsByStatus('executado')).toHaveLength(1);
   });
 
