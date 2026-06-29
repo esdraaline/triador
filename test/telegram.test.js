@@ -95,8 +95,9 @@ describe('Telegram - API fina', () => {
   });
 
   test('enviarMensagem chama sendMessage com parse_mode HTML', () => {
+    const token = '1234567890:ABCToken';
     installMocks({
-      properties: { TELEGRAM_BOT_TOKEN: 'token_123' },
+      properties: { TELEGRAM_BOT_TOKEN: token },
       urlFetch: {
         responses: [
           makeUrlFetchResponseMock({ body: { ok: true, result: { message_id: 55 } } }),
@@ -105,11 +106,12 @@ describe('Telegram - API fina', () => {
     });
 
     const result = enviarMensagem('chat_1', '<b>Oi</b>', { inline_keyboard: [] });
+    const url = global.UrlFetchApp.fetch.mock.calls[0][0];
     const payload = JSON.parse(global.UrlFetchApp.fetch.mock.calls[0][1].payload);
 
-    expect(global.UrlFetchApp.fetch.mock.calls[0][0]).toBe(
-      'https://api.telegram.org/bottoken_123/sendMessage',
-    );
+    expect(url).toBe('https://api.telegram.org/bot1234567890:ABCToken/sendMessage');
+    expect(url).toContain(':ABCToken');
+    expect(url).not.toContain('%3A');
     expect(payload).toMatchObject({
       chat_id: 'chat_1',
       text: '<b>Oi</b>',

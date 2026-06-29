@@ -154,7 +154,7 @@ function parseTelegramResponse_(response) {
 
 function telegramFetch_(method, payload) {
   var token = getTelegramConfigFn_('getTelegramToken')();
-  var response = UrlFetchApp.fetch(TELEGRAM_API_BASE + encodeURIComponent(token) + '/' + method, {
+  var response = UrlFetchApp.fetch(TELEGRAM_API_BASE + token + '/' + method, {
     method: 'post',
     contentType: 'application/json',
     muteHttpExceptions: true,
