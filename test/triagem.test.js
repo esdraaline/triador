@@ -1,10 +1,5 @@
 const { executarTriagemDiaria } = require('../src/Triagem');
-const {
-  appendEmail,
-  getSheetSchemas,
-  listEmails,
-  setupSheet,
-} = require('../src/Planilha');
+const { appendEmail, getSheetSchemas, listEmails, setupSheet } = require('../src/Planilha');
 const { installMocks, resetMocks } = require('./helpers/gasMocks');
 
 function seedConta(spreadsheet) {
@@ -29,7 +24,7 @@ describe('Triagem diaria', () => {
     resetMocks();
   });
 
-  test('executarTriagemDiaria grava emails classificados com status triado e ids unicos', () => {
+  test('executarTriagemDiaria envia resumo e grava emails com status enviado', () => {
     installMocks({ properties: { SHEET_ID: 'sheet_123' } });
     setupSheet();
     seedConta(global.SpreadsheetApp.__spreadsheet);
@@ -61,9 +56,12 @@ describe('Triagem diaria', () => {
       },
     ];
     const ids = ['A7F92K', 'B8G93L'];
+    const enviarMensagemFn = jest.fn(() => ({ ok: true, result: { message_id: 123 } }));
     const resultado = executarTriagemDiaria({
       coletarContaFn: jest.fn(() => coletados),
       gerarIdFn: jest.fn(() => ids.shift()),
+      getTelegramChatIdFn: jest.fn(() => 'chat_1'),
+      enviarMensagemFn,
       classificarEmailsFn: jest.fn((emails) =>
         emails.map((email) => ({
           ...email,
@@ -86,9 +84,20 @@ describe('Triagem diaria', () => {
     expect(emails).toHaveLength(2);
     expect(emails.map((email) => email.id_interno)).toEqual(['A7F92K', 'B8G93L']);
     expect(emails).toEqual([
-      expect.objectContaining({ message_id: 'msg_1', status: 'triado' }),
-      expect.objectContaining({ message_id: 'msg_2', status: 'triado' }),
+      expect.objectContaining({
+        message_id: 'msg_1',
+        status: 'enviado',
+        telegram_msg_id: 123,
+        acoes_disponiveis: ['arquivar', 'abrir'],
+      }),
+      expect.objectContaining({
+        message_id: 'msg_2',
+        status: 'enviado',
+        telegram_msg_id: 123,
+        acoes_disponiveis: ['arquivar', 'abrir'],
+      }),
     ]);
+    expect(enviarMensagemFn).toHaveBeenCalledTimes(1);
     expect(global.SpreadsheetApp.__spreadsheet.__getSheet('Log').__getRows()).toHaveLength(2);
   });
 
@@ -123,6 +132,8 @@ describe('Triagem diaria', () => {
         },
       ]),
       gerarIdFn: jest.fn(() => 'B8G93L'),
+      getTelegramChatIdFn: jest.fn(() => 'chat_1'),
+      enviarMensagemFn: jest.fn(() => ({ ok: true, result: { message_id: 123 } })),
       classificarEmailsFn: jest.fn((emails) =>
         emails.map((email) => ({
           ...email,

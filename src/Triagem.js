@@ -3,12 +3,14 @@ var planilhaModule = {};
 var classificadorModule = {};
 var geminiModule = {};
 var configModule = {};
+var telegramModule = {};
 if (typeof module !== 'undefined' && module.exports) {
   coletorModule = require('./Coletor');
   planilhaModule = require('./Planilha');
   classificadorModule = require('./Classificador');
   geminiModule = require('./Gemini');
   configModule = require('./Config');
+  telegramModule = require('./Telegram');
 }
 
 function getFn_(name, moduleRef) {
@@ -46,6 +48,19 @@ function aplicarStatusTriado_(email) {
   return Object.assign({}, email, { status: 'triado' });
 }
 
+function aplicarAcoesF0_(email) {
+  return Object.assign({}, email, {
+    acoes_disponiveis: ['arquivar', 'abrir'],
+  });
+}
+
+function marcarEnviado_(email, telegramMsgId) {
+  return Object.assign({}, email, {
+    status: 'enviado',
+    telegram_msg_id: telegramMsgId || '',
+  });
+}
+
 function contarPorCategoria_(emails) {
   return (emails || []).reduce(function reduceCategorias(acc, email) {
     var categoria = email.categoria_sugerida || 'sem_categoria';
@@ -66,6 +81,12 @@ function executarTriagemDiaria(opcoes) {
   var classificarEmailsFn = opts.classificarEmailsFn || getFn_('classificarEmails', classificadorModule);
   var classificarComGeminiFn = opts.classificarComGeminiFn || getFn_('classificarComGemini', geminiModule);
   var getGeminiKeyFn = opts.getGeminiKeyFn || getFn_('getGeminiKey', configModule);
+  var getTelegramChatIdFn = opts.getTelegramChatIdFn || getFn_('getTelegramChatId', configModule);
+  var enviarMensagemFn = opts.enviarMensagemFn || getFn_('enviarMensagem', telegramModule);
+  var formatarResumoFn = opts.formatarResumoFn || getFn_('formatarResumo', telegramModule);
+  var montarTecladoResumoFn = opts.montarTecladoResumoFn || getFn_('montarTecladoResumo', telegramModule);
+  var agruparEmailsPorCategoriaFn =
+    opts.agruparEmailsPorCategoriaFn || getFn_('agruparEmailsPorCategoria', telegramModule);
   var sleepFn =
     opts.sleepFn || (typeof Utilities !== 'undefined' ? Utilities.sleep : function semSleep() {});
   var nowFn = opts.nowFn || function now() {
@@ -113,9 +134,22 @@ function executarTriagemDiaria(opcoes) {
       },
       sleepFn: sleepFn,
       delayEntreLotesMs: opts.delayEntreLotesMs || 1500,
-    }).map(aplicarStatusTriado_);
+    })
+      .map(aplicarStatusTriado_)
+      .map(aplicarAcoesF0_);
 
-    classificados.forEach(function appendClassificado(email) {
+    var textoResumo = formatarResumoFn(agruparEmailsPorCategoriaFn(classificados), conta, nowFn());
+    var tecladoResumo = montarTecladoResumoFn(classificados);
+    var telegramResponse = enviarMensagemFn(getTelegramChatIdFn(), textoResumo, tecladoResumo);
+    var telegramMsgId =
+      telegramResponse &&
+      telegramResponse.result &&
+      (telegramResponse.result.message_id || telegramResponse.result.messageId);
+    var emailsParaFila = classificados.map(function markSent(email) {
+      return marcarEnviado_(email, telegramMsgId);
+    });
+
+    emailsParaFila.forEach(function appendClassificado(email) {
       appendEmailFn(email);
     });
 
