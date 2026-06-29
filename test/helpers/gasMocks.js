@@ -243,6 +243,29 @@ function makeUtilitiesMock() {
   };
 }
 
+function makeContentServiceMock() {
+  return {
+    MimeType: {
+      JSON: 'application/json',
+      TEXT: 'text/plain',
+    },
+    createTextOutput: jest.fn((content = '') => ({
+      content,
+      mimeType: 'text/plain',
+      setMimeType: jest.fn(function setMimeType(mimeType) {
+        this.mimeType = mimeType;
+        return this;
+      }),
+      getContent: jest.fn(function getContent() {
+        return this.content;
+      }),
+      getMimeType: jest.fn(function getMimeType() {
+        return this.mimeType;
+      }),
+    })),
+  };
+}
+
 function installMocks(overrides = {}) {
   global.GmailApp = overrides.GmailApp || makeGmailMock(overrides.gmail || {});
   global.SpreadsheetApp = overrides.SpreadsheetApp || makeSheetMock(overrides.sheets || {});
@@ -252,6 +275,7 @@ function installMocks(overrides = {}) {
   global.ScriptApp = overrides.ScriptApp || makeScriptAppMock(overrides.scriptApp || {});
   global.Logger = overrides.Logger || makeLoggerMock();
   global.Utilities = overrides.Utilities || makeUtilitiesMock();
+  global.ContentService = overrides.ContentService || makeContentServiceMock();
 
   return {
     GmailApp: global.GmailApp,
@@ -261,6 +285,7 @@ function installMocks(overrides = {}) {
     ScriptApp: global.ScriptApp,
     Logger: global.Logger,
     Utilities: global.Utilities,
+    ContentService: global.ContentService,
   };
 }
 
@@ -273,6 +298,7 @@ function resetMocks() {
     'ScriptApp',
     'Logger',
     'Utilities',
+    'ContentService',
   ].forEach((key) => {
     delete global[key];
   });
@@ -294,4 +320,5 @@ module.exports = {
   makeScriptAppMock,
   makeLoggerMock,
   makeUtilitiesMock,
+  makeContentServiceMock,
 };

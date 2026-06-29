@@ -15,7 +15,8 @@
     "PropertiesService": "readonly",
     "ScriptApp": "readonly",
     "Logger": "readonly",
-    "Utilities": "readonly"
+    "Utilities": "readonly",
+    "ContentService": "readonly"
   },
   "overrides": [
     {

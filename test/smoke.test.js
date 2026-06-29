@@ -20,6 +20,7 @@ describe('GAS mock harness', () => {
     expect(global.ScriptApp).toBeDefined();
     expect(global.Logger).toBeDefined();
     expect(global.Utilities).toBeDefined();
+    expect(global.ContentService).toBeDefined();
   });
 
   test('permite configurar Gmail threads e respostas UrlFetch', () => {
@@ -48,5 +49,6 @@ describe('GAS mock harness', () => {
     expect(global.ScriptApp).toBeUndefined();
     expect(global.Logger).toBeUndefined();
     expect(global.Utilities).toBeUndefined();
+    expect(global.ContentService).toBeUndefined();
   });
 });

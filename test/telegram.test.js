@@ -6,6 +6,7 @@ const {
   formatarResumo,
   montarTeclado,
   montarTecladoResumo,
+  responderCallback,
 } = require('../src/Telegram');
 const { installMocks, resetMocks, makeUrlFetchResponseMock } = require('./helpers/gasMocks');
 
@@ -140,6 +141,26 @@ describe('Telegram - API fina', () => {
       chat_id: 'chat_1',
       message_id: 55,
       parse_mode: 'HTML',
+    });
+  });
+
+  test('responderCallback chama answerCallbackQuery', () => {
+    installMocks({
+      properties: { TELEGRAM_BOT_TOKEN: '1234567890:ABCToken' },
+      urlFetch: {
+        responses: [makeUrlFetchResponseMock({ body: { ok: true, result: true } })],
+      },
+    });
+
+    responderCallback('callback_1', 'feito');
+    const payload = JSON.parse(global.UrlFetchApp.fetch.mock.calls[0][1].payload);
+
+    expect(global.UrlFetchApp.fetch.mock.calls[0][0]).toBe(
+      'https://api.telegram.org/bot1234567890:ABCToken/answerCallbackQuery',
+    );
+    expect(payload).toEqual({
+      callback_query_id: 'callback_1',
+      text: 'feito',
     });
   });
 });

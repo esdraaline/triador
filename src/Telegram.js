@@ -182,6 +182,13 @@ function editarMensagem(chatId, msgId, texto, teclado) {
   });
 }
 
+function responderCallback(callbackQueryId, texto) {
+  return telegramFetch_('answerCallbackQuery', {
+    callback_query_id: callbackQueryId,
+    text: texto || '',
+  });
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     escapeHtml,
@@ -191,5 +198,6 @@ if (typeof module !== 'undefined' && module.exports) {
     montarTecladoResumo,
     enviarMensagem,
     editarMensagem,
+    responderCallback,
   };
 }
