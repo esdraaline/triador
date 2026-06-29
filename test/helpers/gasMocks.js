@@ -214,8 +214,14 @@ function makeScriptAppMock(options = {}) {
       everyDays: jest.fn(function everyDays() {
         return this;
       }),
+      nearMinute: jest.fn(function nearMinute() {
+        return this;
+      }),
       create: jest.fn(() => {
-        const trigger = { getHandlerFunction: () => handlerFunction };
+        const trigger = {
+          getHandlerFunction: () => handlerFunction,
+          getUniqueId: () => `trigger_${triggers.length + 1}`,
+        };
         triggers.push(trigger);
         return trigger;
       }),

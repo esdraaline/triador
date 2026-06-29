@@ -16,7 +16,11 @@
     "ScriptApp": "readonly",
     "Logger": "readonly",
     "Utilities": "readonly",
-    "ContentService": "readonly"
+    "ContentService": "readonly",
+    "setupSheet": "readonly",
+    "executarTriagemDiaria": "readonly",
+    "doPost": "readonly",
+    "doGet": "readonly"
   },
   "overrides": [
     {
