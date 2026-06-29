@@ -19,7 +19,7 @@ function contaDoEmail_(email, contexto) {
 }
 
 function politicaPermiteGemini_(conta) {
-  return conta && conta.allow_ai_external === true;
+  return conta && (conta.allow_ai_external === true || conta.allow_ai_external === 'true');
 }
 
 function montarAcoesDisponiveis_(resultado) {

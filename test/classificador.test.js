@@ -52,6 +52,41 @@ describe('Classificador em cascata', () => {
     });
   });
 
+  test("allow_ai_external string 'true' chama Gemini e cautela nao chama", () => {
+    const geminiTrue = jest.fn(() => [
+      {
+        id: 'A7F92K',
+        categoria: 'arquivar',
+        confianca: 'alta',
+        resumo: 'Pode arquivar.',
+        acao_sugerida: 'arquivar',
+      },
+    ]);
+    const geminiCautela = jest.fn();
+
+    const permitido = classificarEmails([makeEmail('A7F92K')], {
+      conta: { account_id: 'josemardp_gmail', allow_ai_external: 'true' },
+      regras: [],
+      geminiFn: geminiTrue,
+    });
+    const bloqueado = classificarEmails([makeEmail('B8G93L')], {
+      conta: { account_id: 'conta-comercial_gmail', allow_ai_external: 'cautela' },
+      regras: [],
+      geminiFn: geminiCautela,
+    });
+
+    expect(geminiTrue).toHaveBeenCalledTimes(1);
+    expect(permitido[0]).toMatchObject({
+      categoria_sugerida: 'arquivar',
+      confianca: 'alta',
+    });
+    expect(geminiCautela).not.toHaveBeenCalled();
+    expect(bloqueado[0]).toMatchObject({
+      categoria_sugerida: 'importante',
+      confianca: 'baixa',
+    });
+  });
+
   test('allow_ai_external false nunca chama Gemini', () => {
     const geminiFn = jest.fn();
     const result = classificarEmails([makeEmail('A7F92K')], {
