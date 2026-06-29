@@ -1,0 +1,28 @@
+{
+  "name": "triador",
+  "version": "0.1.0",
+  "description": "Triador: triagem unificada de email com Google Apps Script, Telegram e Gemini.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint .",
+    "push": "clasp push",
+    "deploy": "clasp push && clasp deploy",
+    "check": "npm run lint && npm test"
+  },
+  "keywords": [
+    "google-apps-script",
+    "gmail",
+    "triagem",
+    "automation"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3"
+  }
+}

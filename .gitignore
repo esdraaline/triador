@@ -1,0 +1,17 @@
+node_modules/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.clasprc.json
+.clasp.local.json
+*.local
+*.secret
+*.secrets
+*.env
+.env
+.env.*
+secrets/
+credentials/
+creds/
