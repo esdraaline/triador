@@ -79,6 +79,28 @@ describe('Telegram - formatter e teclado', () => {
     ]);
   });
 
+  test('montarTeclado habilita Excluir Guardar Ciente e respeita allow_delete=false', () => {
+    const permitido = montarTeclado(
+      makeEmail({ acoes_disponiveis: ['lixeira', 'guardar', 'ciente'] }),
+      { allow_delete: true },
+    );
+    const teclado = montarTeclado(
+      makeEmail({ acoes_disponiveis: ['lixeira', 'guardar', 'ciente', 'abrir'] }),
+      { allow_delete: false },
+    );
+
+    expect(permitido.inline_keyboard.flat()).toEqual([
+      { text: 'Excluir', callback_data: 'lix:A7F92K' },
+      { text: 'Guardar', callback_data: 'imp:A7F92K' },
+      { text: 'Ciente', callback_data: 'rev:A7F92K' },
+    ]);
+    expect(teclado.inline_keyboard.flat()).toEqual([
+      { text: 'Guardar', callback_data: 'imp:A7F92K' },
+      { text: 'Ciente', callback_data: 'rev:A7F92K' },
+      { text: 'Abrir', callback_data: 'abr:A7F92K' },
+    ]);
+  });
+
   test('montarTecladoResumo concatena botoes dos itens', () => {
     const teclado = montarTecladoResumo([
       makeEmail({ id_interno: 'A7F92K' }),

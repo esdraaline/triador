@@ -56,9 +56,16 @@ function criarRespostaJson_(statusCode, body) {
 }
 
 function despacharParaConta(conta, acao, email, deps) {
-  var arquivarFn = (deps && deps.arquivarFn) || getRoteadorFn_('arquivar', roteadorExecutorModule);
-  if (acao === 'arq') return arquivarFn(email);
-  throw new Error('Acao nao suportada no F0: ' + acao + ' / ' + (conta && conta.account_id));
+  var options = deps || {};
+  var acoes = {
+    arq: options.arquivarFn || getRoteadorFn_('arquivar', roteadorExecutorModule),
+    lix: options.moverParaLixeiraFn || getRoteadorFn_('moverParaLixeira', roteadorExecutorModule),
+    imp: options.guardarImportanteFn || getRoteadorFn_('guardarImportante', roteadorExecutorModule),
+    rev: options.marcarCienteFn || getRoteadorFn_('marcarCiente', roteadorExecutorModule),
+  };
+  var executar = acoes[acao];
+  if (executar) return executar(email);
+  throw new Error('Acao nao suportada: ' + acao + ' / ' + (conta && conta.account_id));
 }
 
 function processarDoPost(event, deps) {

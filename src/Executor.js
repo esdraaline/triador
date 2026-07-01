@@ -18,21 +18,54 @@ function obterOuCriarLabel_(name) {
   return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
 }
 
-function arquivarThreadGmail_(threadId, labelName) {
+function obterThreadGmail_(threadId) {
   var thread = GmailApp.getThreadById(threadId);
   if (!thread) throw new Error('Thread Gmail nao encontrada: ' + threadId);
-
-  var label = obterOuCriarLabel_(labelName);
-  thread.moveToArchive();
-  thread.addLabel(label);
   return thread;
 }
 
-function mensagemSucessoArquivar_(email) {
-  return '✅ Arquivado: ' + (email.assunto || email.id_interno);
+function aplicarLabel_(thread, labelName) {
+  var label = obterOuCriarLabel_(labelName);
+  thread.addLabel(label);
+  return label;
 }
 
-function arquivar(email, opcoes) {
+function arquivarThreadGmail_(threadId, labelName) {
+  var thread = obterThreadGmail_(threadId);
+
+  thread.moveToArchive();
+  aplicarLabel_(thread, labelName);
+  return thread;
+}
+
+function moverThreadParaLixeiraGmail_(threadId, labelName) {
+  var thread = obterThreadGmail_(threadId);
+
+  aplicarLabel_(thread, labelName);
+  thread.moveToTrash();
+  return thread;
+}
+
+function guardarThreadImportanteGmail_(threadId, labelName) {
+  var thread = obterThreadGmail_(threadId);
+
+  aplicarLabel_(thread, labelName);
+  aplicarLabel_(thread, 'Importante');
+  return thread;
+}
+
+function marcarThreadCienteGmail_(threadId, labelName) {
+  var thread = obterThreadGmail_(threadId);
+
+  aplicarLabel_(thread, labelName);
+  return thread;
+}
+
+function mensagemSucesso_(email, texto) {
+  return '✅ ' + texto + ': ' + (email.assunto || email.id_interno);
+}
+
+function executarAcao_(email, acaoExecutada, textoSucesso, executarGmailFn, opcoes) {
   var opts = opcoes || {};
   var updateEmailStatusFn =
     opts.updateEmailStatusFn || getExecutorFn_('updateEmailStatus', executorPlanilhaModule);
@@ -46,12 +79,12 @@ function arquivar(email, opcoes) {
   };
   var labelName = getLabelControleFn();
 
-  arquivarThreadGmail_(email.thread_id, labelName);
+  executarGmailFn(email.thread_id, labelName);
 
   var executadoEm = nowFn();
   var atualizado = updateEmailStatusFn(email.id_interno, {
     status: 'executado',
-    acao_executada: 'arquivar',
+    acao_executada: acaoExecutada,
     executado_em: executadoEm,
   });
 
@@ -59,28 +92,50 @@ function arquivar(email, opcoes) {
     timestamp: executadoEm,
     account_id: email.account_id,
     id_interno: email.id_interno,
-    acao_sugerida: email.acao_sugerida || 'arquivar',
-    acao_executada: 'arquivar',
+    acao_sugerida: email.acao_sugerida || acaoExecutada,
+    acao_executada: acaoExecutada,
     resultado: 'ok',
     erro: '',
   });
 
   if (email.telegram_msg_id) {
-    editarMensagemFn(getTelegramChatIdFn(), email.telegram_msg_id, mensagemSucessoArquivar_(email), {
+    editarMensagemFn(getTelegramChatIdFn(), email.telegram_msg_id, mensagemSucesso_(email, textoSucesso), {
       inline_keyboard: [],
     });
   }
 
   return atualizado || Object.assign({}, email, {
     status: 'executado',
-    acao_executada: 'arquivar',
+    acao_executada: acaoExecutada,
     executado_em: executadoEm,
   });
+}
+
+function arquivar(email, opcoes) {
+  return executarAcao_(email, 'arquivar', 'Arquivado', arquivarThreadGmail_, opcoes);
+}
+
+function moverParaLixeira(email, opcoes) {
+  return executarAcao_(email, 'lixeira', 'Movido para lixeira', moverThreadParaLixeiraGmail_, opcoes);
+}
+
+function guardarImportante(email, opcoes) {
+  return executarAcao_(email, 'guardar', 'Guardado como importante', guardarThreadImportanteGmail_, opcoes);
+}
+
+function marcarCiente(email, opcoes) {
+  return executarAcao_(email, 'ciente', 'Ciente', marcarThreadCienteGmail_, opcoes);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     arquivar,
+    moverParaLixeira,
+    guardarImportante,
+    marcarCiente,
     arquivarThreadGmail_,
+    moverThreadParaLixeiraGmail_,
+    guardarThreadImportanteGmail_,
+    marcarThreadCienteGmail_,
   };
 }

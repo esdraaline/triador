@@ -1,5 +1,10 @@
 const { arquivar } = require('../src/Executor');
-const { processarDoPost, parseCallback, validarSecret } = require('../src/Roteador');
+const {
+  despacharParaConta,
+  processarDoPost,
+  parseCallback,
+  validarSecret,
+} = require('../src/Roteador');
 const { appendEmail, getEmailById, setupSheet } = require('../src/Planilha');
 const { installMocks, resetMocks, makeGmailThreadMock } = require('./helpers/gasMocks');
 
@@ -38,6 +43,28 @@ describe('Roteador doPost', () => {
       acao: 'arq',
       idInterno: 'A7F92K',
     });
+  });
+
+  test('despacharParaConta mapeia prefixos lix imp rev para novas acoes', () => {
+    const email = { id_interno: 'A7F92K', account_id: 'josemardp_gmail' };
+    const deps = {
+      moverParaLixeiraFn: jest.fn(() => 'lixeira_ok'),
+      guardarImportanteFn: jest.fn(() => 'guardar_ok'),
+      marcarCienteFn: jest.fn(() => 'ciente_ok'),
+    };
+
+    expect(despacharParaConta({ account_id: 'josemardp_gmail' }, 'lix', email, deps)).toBe(
+      'lixeira_ok',
+    );
+    expect(despacharParaConta({ account_id: 'josemardp_gmail' }, 'imp', email, deps)).toBe(
+      'guardar_ok',
+    );
+    expect(despacharParaConta({ account_id: 'josemardp_gmail' }, 'rev', email, deps)).toBe(
+      'ciente_ok',
+    );
+    expect(deps.moverParaLixeiraFn).toHaveBeenCalledWith(email);
+    expect(deps.guardarImportanteFn).toHaveBeenCalledWith(email);
+    expect(deps.marcarCienteFn).toHaveBeenCalledWith(email);
   });
 
   test('segredo invalido responde 401 e nao age', () => {

@@ -114,9 +114,24 @@ function callbackByteLength_(value) {
   return String(value).length;
 }
 
-function montarTeclado(email) {
+function politicaPermiteAcao_(email, politica, acao) {
+  if (acao !== 'lixeira') return true;
+  if (email && email.allow_delete === false) return false;
+  if (politica && politica.allow_delete === false) return false;
+  return true;
+}
+
+function politicaDoEmail_(email, politicas) {
+  if (!politicas || typeof politicas === 'function') return politicas;
+  if (politicas[email.account_id]) return politicas[email.account_id];
+  return politicas;
+}
+
+function montarTeclado(email, politica) {
   var acoes = email.acoes_disponiveis || [];
-  var buttons = acoes.map(function mapAcao(acao) {
+  var buttons = acoes.filter(function filterAcao(acao) {
+    return politicaPermiteAcao_(email, politica, acao);
+  }).map(function mapAcao(acao) {
     var definition = TELEGRAM_ACOES[acao];
     if (!definition) throw new Error('Acao Telegram desconhecida: ' + acao);
     return {
@@ -132,10 +147,12 @@ function montarTeclado(email) {
   };
 }
 
-function montarTecladoResumo(emails) {
+function montarTecladoResumo(emails, politicas) {
   var rows = [];
   (emails || []).forEach(function appendEmailButtons(email) {
-    var teclado = montarTeclado(email);
+    var resolver = politicaDoEmail_(email, politicas);
+    var politica = typeof resolver === 'function' ? resolver(email) : resolver;
+    var teclado = montarTeclado(email, politica);
     teclado.inline_keyboard.forEach(function appendRow(row) {
       rows.push(row);
     });
