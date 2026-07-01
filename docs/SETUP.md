@@ -48,25 +48,30 @@ Também existe `seedProperties(values)` para gravar propriedades a partir de um 
 
 Crie um projeto executor por conta Gmail adicional: `esdraaline_gmail`, `conta-comercial_gmail` e `conta_familiar_gmail`.
 
-1. Compartilhe a Google Sheet com a conta dona do executor.
+**Importante:** o `GmailApp` dentro de um Apps Script atua na identidade de quem *possui/autoriza* aquele script — não na conta que só recebe acesso à planilha. Cada executor precisa ser criado e autorizado com login na própria conta Gmail dele, senão as ações caem na caixa errada (ou falham).
+
+1. Rode `clasp logout` e depois `clasp login` autenticado **na conta Gmail dona do executor** (ex.: faça login como `esdraaline`, não como `josemardp`).
 2. Monte um diretorio de deploy a partir de `executor/`:
    - copie `executor/src/ExecutorApp.js`;
    - copie os arquivos compartilhados de `src/` indicados em `executor/README.md`;
    - copie `executor/appsscript.json`.
-3. No diretorio do executor, rode `clasp create --type standalone --title "Triador Executor <account_id>"`.
-4. Configure as Script Properties do executor:
+3. No diretorio do executor, rode `clasp create --type standalone --title "Triador Executor <account_id>"` (ainda logado como a conta dona do executor).
+4. Compartilhe a Google Sheet com essa mesma conta Gmail, para o script ter acesso de escrita à planilha compartilhada.
+5. Configure as Script Properties do executor:
    - `ACCOUNT_ID=<account_id da aba Contas>`;
    - `SHEET_ID=<id da mesma planilha>`;
    - `SHARED_SECRET=<mesmo segredo do roteador>`;
    - `TELEGRAM_BOT_TOKEN=<token do bot do roteador>`;
    - `TELEGRAM_CHAT_ID=<chat do resumo>`;
    - `GEMINI_API_KEY=<chave Gemini>`.
-5. Rode `clasp push`.
-6. Faça deploy como Web App:
-   - Executar como: você.
+6. Rode `clasp push`.
+7. Faça deploy como Web App:
+   - Executar como: você (a conta dona do executor).
    - Quem tem acesso: qualquer pessoa com o link.
-7. Copie a URL `/exec` do executor e preencha `executor_url` na linha da conta em `Contas`.
-8. Rode `createDailyTrigger()` dentro do executor se essa conta deve coletar diariamente. O `ACCOUNT_ID` limita a triagem a propria conta.
+8. Na primeira execução (qualquer função, ex. `setupTriadorSheet` ou o próprio deploy), autorize o consentimento OAuth do `gmail.modify` **logado como a conta dona do executor**.
+9. Copie a URL `/exec` do executor e preencha `executor_url` na linha da conta em `Contas`.
+10. Rode `createDailyTrigger()` dentro do executor se essa conta deve coletar diariamente. O `ACCOUNT_ID` limita a triagem a propria conta.
+11. Antes de repetir o processo para a próxima conta, rode `clasp logout` de novo para não deixar login cruzado entre executores.
 
 O webhook do Telegram continua apenas no roteador. Os executores recebem somente chamadas do roteador usando `SHARED_SECRET`.
 

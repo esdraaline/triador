@@ -31,12 +31,17 @@ O `ExecutorApp.js` fornece o `doPost` do Web App executor. Os demais arquivos sa
 
 ## Deploy
 
-1. Compartilhe a Google Sheet com a conta Gmail dona do executor.
-2. Faça `clasp create --type standalone --title "Triador Executor <account_id>"`.
-3. Configure o `rootDir` do executor para o diretorio de deploy dessa conta.
-4. Rode `clasp push`.
-5. Faça deploy como Web App:
-   - Executar como: você.
+**Importante:** `GmailApp` age na identidade de quem autoriza o script, não na conta que só tem acesso à planilha. Faça `clasp login` na conta Gmail dona deste executor ANTES de criar o projeto (`clasp logout` primeiro se já houver outra sessão ativa).
+
+1. `clasp logout` e `clasp login` autenticado na conta Gmail dona do executor.
+2. Compartilhe a Google Sheet com essa mesma conta.
+3. Faça `clasp create --type standalone --title "Triador Executor <account_id>"` (ainda logado como essa conta).
+4. Configure o `rootDir` do executor para o diretorio de deploy dessa conta.
+5. Rode `clasp push`.
+6. Faça deploy como Web App:
+   - Executar como: você (a conta dona do executor).
    - Quem tem acesso: qualquer pessoa com o link.
-6. Copie a URL `/exec` e preencha `executor_url` da conta correspondente na aba `Contas`.
-7. Rode `createDailyTrigger()` nesse projeto executor se a conta deve coletar diariamente por conta propria.
+7. Autorize o consentimento OAuth do `gmail.modify` na primeira execução, logado como essa conta.
+8. Copie a URL `/exec` e preencha `executor_url` da conta correspondente na aba `Contas`.
+9. Rode `createDailyTrigger()` nesse projeto executor se a conta deve coletar diariamente por conta propria.
+10. Rode `clasp logout` antes de configurar o próximo executor, para não deixar login cruzado entre contas.
