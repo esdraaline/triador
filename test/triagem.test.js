@@ -2,21 +2,27 @@ const { executarTriagemDiaria } = require('../src/Triagem');
 const { appendEmail, getSheetSchemas, listEmails, setupSheet } = require('../src/Planilha');
 const { installMocks, resetMocks } = require('./helpers/gasMocks');
 
-function seedConta(spreadsheet) {
-  spreadsheet.__getSheet('Contas').appendRow([
-    'josemardp_gmail',
-    'conta-pessoal@exemplo.com',
-    'gmail',
-    'incluida',
-    'F0',
-    'low',
-    'trash_only',
-    true,
-    false,
-    'true',
-    '',
-    'boleto',
-  ]);
+function seedConta(spreadsheet, overrides = {}) {
+  const conta = {
+    account_id: 'josemardp_gmail',
+    email: 'conta-pessoal@exemplo.com',
+    provider: 'gmail',
+    status: 'incluida',
+    fase: 'F0',
+    risk_level: 'low',
+    delete_mode: 'trash_only',
+    allow_delete: true,
+    allow_unsubscribe: false,
+    allow_ai_external: 'true',
+    executor_url: '',
+    always_important_keywords: 'boleto',
+    ...overrides,
+  };
+  spreadsheet.__getSheet('Contas').appendRow(
+    getSheetSchemas().Contas.map((header) =>
+      Object.prototype.hasOwnProperty.call(conta, header) ? conta[header] : '',
+    ),
+  );
 }
 
 describe('Triagem diaria', () => {
@@ -60,6 +66,7 @@ describe('Triagem diaria', () => {
     const resultado = executarTriagemDiaria({
       coletarContaFn: jest.fn(() => coletados),
       gerarIdFn: jest.fn(() => ids.shift()),
+      getGeminiKeyFn: jest.fn(() => 'gemini_key'),
       getTelegramChatIdFn: jest.fn(() => 'chat_1'),
       enviarMensagemFn,
       classificarEmailsFn: jest.fn((emails) =>
@@ -149,24 +156,95 @@ describe('Triagem diaria', () => {
     expect(listEmails().map((email) => email.message_id)).toEqual(['msg_1', 'msg_2']);
   });
 
-  test('ignora contas fora do F0', () => {
+  test('processa contas F2 e filtro ACCOUNT_ID limita executor a propria conta', () => {
     installMocks({ properties: { SHEET_ID: 'sheet_123' } });
     setupSheet();
     const spreadsheet = global.SpreadsheetApp.__spreadsheet;
-    spreadsheet.__getSheet('Contas').appendRow(
-      getSheetSchemas().Contas.map((header) => {
-        if (header === 'account_id') return 'futura';
-        if (header === 'status') return 'incluida';
-        if (header === 'fase') return 'F2';
-        if (header === 'provider') return 'gmail';
-        return '';
-      }),
-    );
+    seedConta(spreadsheet, { account_id: 'josemardp_gmail', fase: 'F0' });
+    seedConta(spreadsheet, {
+      account_id: 'esdraaline_gmail',
+      email: 'conta-secundaria@exemplo.com',
+      fase: 'F2',
+    });
     const coletarContaFn = jest.fn(() => []);
 
-    const resultado = executarTriagemDiaria({ coletarContaFn });
+    const resultado = executarTriagemDiaria({
+      coletarContaFn,
+      getAccountIdFn: jest.fn(() => 'esdraaline_gmail'),
+    });
 
-    expect(coletarContaFn).not.toHaveBeenCalled();
-    expect(resultado.contas_processadas).toBe(0);
+    expect(coletarContaFn).toHaveBeenCalledTimes(1);
+    expect(coletarContaFn.mock.calls[0][0]).toMatchObject({ account_id: 'esdraaline_gmail' });
+    expect(resultado.contas_processadas).toBe(1);
+  });
+
+  test('multi-conta envia um resumo unico e nao chama Gemini para conta cautela', () => {
+    installMocks({ properties: { SHEET_ID: 'sheet_123' } });
+    setupSheet();
+    const spreadsheet = global.SpreadsheetApp.__spreadsheet;
+    seedConta(spreadsheet, { account_id: 'josemardp_gmail', email: 'conta-pessoal@exemplo.com' });
+    seedConta(spreadsheet, {
+      account_id: 'conta-comercial_gmail',
+      email: 'conta-comercial@exemplo.com',
+      fase: 'F2',
+      allow_ai_external: 'cautela',
+      allow_delete: false,
+    });
+
+    const classificarComGeminiFn = jest.fn((emails) =>
+      emails.map((email) => ({
+        id: email.id_interno,
+        categoria: 'arquivar',
+        confianca: 'alta',
+        resumo: 'Pode arquivar.',
+        acao_sugerida: 'arquivar',
+      })),
+    );
+    const enviarMensagemFn = jest.fn(() => ({ ok: true, result: { message_id: 123 } }));
+    const montarTecladoResumoFn = jest.fn(() => ({ inline_keyboard: [] }));
+    const ids = ['A7F92K', 'B8G93L'];
+
+    const resultado = executarTriagemDiaria({
+      coletarContaFn: jest.fn((conta) => [
+        {
+          account_id: conta.account_id,
+          provider: 'gmail',
+          message_id: `msg_${conta.account_id}`,
+          thread_id: `thread_${conta.account_id}`,
+          remetente: 'Pessoa <pessoa@example.com>',
+          assunto: 'Mensagem ambigua',
+          snippet: 'Trecho',
+          status: 'novo',
+        },
+      ]),
+      gerarIdFn: jest.fn(() => ids.shift()),
+      getGeminiKeyFn: jest.fn(() => 'gemini_key'),
+      getTelegramChatIdFn: jest.fn(() => 'chat_1'),
+      enviarMensagemFn,
+      montarTecladoResumoFn,
+      classificarComGeminiFn,
+      nowFn: () => '2026-07-01T07:00:00-03:00',
+      delayEntreLotesMs: 0,
+    });
+
+    const emails = listEmails();
+    expect(resultado).toMatchObject({ contas_processadas: 2, emails_triados: 2 });
+    expect(enviarMensagemFn).toHaveBeenCalledTimes(1);
+    expect(classificarComGeminiFn).toHaveBeenCalledTimes(1);
+    expect(classificarComGeminiFn.mock.calls[0][0]).toHaveLength(1);
+    expect(classificarComGeminiFn.mock.calls[0][0][0].account_id).toBe('josemardp_gmail');
+    expect(emails).toEqual([
+      expect.objectContaining({ account_id: 'josemardp_gmail', status: 'enviado' }),
+      expect.objectContaining({
+        account_id: 'conta-comercial_gmail',
+        status: 'enviado',
+        confianca: 'baixa',
+        acoes_disponiveis: ['abrir'],
+      }),
+    ]);
+    expect(montarTecladoResumoFn.mock.calls[0][1]).toMatchObject({
+      josemardp_gmail: expect.objectContaining({ allow_delete: true }),
+      conta-comercial_gmail: expect.objectContaining({ allow_delete: false }),
+    });
   });
 });

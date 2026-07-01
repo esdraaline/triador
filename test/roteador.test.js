@@ -6,7 +6,12 @@ const {
   validarSecret,
 } = require('../src/Roteador');
 const { appendEmail, getEmailById, setupSheet } = require('../src/Planilha');
-const { installMocks, resetMocks, makeGmailThreadMock } = require('./helpers/gasMocks');
+const {
+  installMocks,
+  resetMocks,
+  makeGmailThreadMock,
+  makeUrlFetchResponseMock,
+} = require('./helpers/gasMocks');
 
 function makeEvent(secret, callbackData = 'arq:A7F92K') {
   return {
@@ -48,6 +53,7 @@ describe('Roteador doPost', () => {
   test('despacharParaConta mapeia prefixos lix imp rev para novas acoes', () => {
     const email = { id_interno: 'A7F92K', account_id: 'josemardp_gmail' };
     const deps = {
+      getPrimaryAccountIdFn: jest.fn(() => 'josemardp_gmail'),
       moverParaLixeiraFn: jest.fn(() => 'lixeira_ok'),
       guardarImportanteFn: jest.fn(() => 'guardar_ok'),
       marcarCienteFn: jest.fn(() => 'ciente_ok'),
@@ -65,6 +71,43 @@ describe('Roteador doPost', () => {
     expect(deps.moverParaLixeiraFn).toHaveBeenCalledWith(email);
     expect(deps.guardarImportanteFn).toHaveBeenCalledWith(email);
     expect(deps.marcarCienteFn).toHaveBeenCalledWith(email);
+  });
+
+  test('despacharParaConta roteia local para primaria e remoto para executor_url', () => {
+    installMocks({
+      urlFetch: {
+        responses: [makeUrlFetchResponseMock({ body: { ok: true, result: { status: 'ok' } } })],
+      },
+    });
+    const email = { id_interno: 'A7F92K', account_id: 'esdraaline_gmail' };
+    const arquivarFn = jest.fn(() => 'local_ok');
+    const deps = {
+      arquivarFn,
+      getPrimaryAccountIdFn: jest.fn(() => 'josemardp_gmail'),
+      getSharedSecretFn: jest.fn(() => 'segredo'),
+    };
+
+    expect(
+      despacharParaConta({ account_id: 'josemardp_gmail' }, 'arq', {
+        id_interno: 'B8G93L',
+        account_id: 'josemardp_gmail',
+      }, deps),
+    ).toBe('local_ok');
+    expect(despacharParaConta({
+      account_id: 'esdraaline_gmail',
+      executor_url: 'https://script.google.com/macros/s/exec_esdra/exec',
+    }, 'lix', email, deps)).toMatchObject({ ok: true });
+
+    expect(arquivarFn).toHaveBeenCalledTimes(1);
+    expect(global.UrlFetchApp.fetch).toHaveBeenCalledWith(
+      'https://script.google.com/macros/s/exec_esdra/exec?SHARED_SECRET=segredo',
+      expect.objectContaining({
+        method: 'post',
+        contentType: 'application/json',
+        muteHttpExceptions: true,
+        payload: JSON.stringify({ acao: 'lix', email }),
+      }),
+    );
   });
 
   test('segredo invalido responde 401 e nao age', () => {

@@ -48,6 +48,27 @@ describe('Telegram - formatter e teclado', () => {
     expect(texto).toContain('Fatura &lt;junho&gt;');
   });
 
+  test('formatarResumo multi-conta deixa a origem clara e agrupa corretamente', () => {
+    const texto = formatarResumo(
+      agruparEmailsPorCategoria([
+        makeEmail({ account_email: 'conta-pessoal@exemplo.com', categoria_sugerida: 'importante' }),
+        makeEmail({
+          id_interno: 'B8G93L',
+          account_id: 'conta-comercial_gmail',
+          account_email: 'conta-comercial@exemplo.com',
+          categoria_sugerida: 'importante',
+          remetente: 'Loja <loja@example.com>',
+        }),
+      ]),
+      { email: '4 contas' },
+      new Date('2026-07-01T10:00:00.000Z'),
+    );
+
+    expect(texto).toContain('🔴 IMPORTANTES - 2');
+    expect(texto).toContain('Conta: conta-pessoal@exemplo.com');
+    expect(texto).toContain('Conta: conta-comercial@exemplo.com');
+  });
+
   test('montarTeclado gera callback_data no formato prefixo:id e ate 64 bytes', () => {
     const teclado = montarTeclado(makeEmail());
 

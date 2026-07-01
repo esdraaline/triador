@@ -66,10 +66,13 @@ function formatarLinhaEmail_(email, index) {
   var remetente = nomeRemetente_(email.remetente) || email.account_id || 'Email';
   var assunto = email.assunto || '(sem assunto)';
   var resumo = email.resumo || email.snippet || '(sem resumo)';
-  return [
+  var origem = email.account_email || email.conta_email || email.account_id || '';
+  var linhas = [
     String(index + 1) + '. <b>' + escapeHtml(remetente) + '</b> - ' + escapeHtml(assunto),
-    '   Resumo: ' + escapeHtml(resumo),
-  ].join('\n');
+  ];
+  if (origem) linhas.push('   Conta: ' + escapeHtml(origem));
+  linhas.push('   Resumo: ' + escapeHtml(resumo));
+  return linhas.join('\n');
 }
 
 function formatarResumo(emailsPorCategoria, conta, data) {

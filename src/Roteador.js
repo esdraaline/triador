@@ -55,8 +55,58 @@ function criarRespostaJson_(statusCode, body) {
   return output;
 }
 
+function montarUrlExecutor_(executorUrl, sharedSecret) {
+  var separator = String(executorUrl).indexOf('?') >= 0 ? '&' : '?';
+  return executorUrl + separator + 'SHARED_SECRET=' + encodeURIComponent(sharedSecret);
+}
+
+function parseExecutorResponse_(response) {
+  var text = response && typeof response.getContentText === 'function' ? response.getContentText() : '';
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return { ok: false, raw: text };
+  }
+}
+
+function obterContaDoEmail_(email, contas) {
+  var accountId = email && email.account_id;
+  return (
+    (contas || []).find(function findConta(conta) {
+      return conta.account_id === accountId;
+    }) || { account_id: accountId }
+  );
+}
+
+function chamarExecutorRemoto_(conta, acao, email, sharedSecret) {
+  if (!conta.executor_url) {
+    throw new Error('executor_url ausente para conta: ' + conta.account_id);
+  }
+
+  var response = UrlFetchApp.fetch(montarUrlExecutor_(conta.executor_url, sharedSecret), {
+    method: 'post',
+    contentType: 'application/json',
+    muteHttpExceptions: true,
+    payload: JSON.stringify({
+      acao: acao,
+      email: email,
+    }),
+  });
+  return parseExecutorResponse_(response);
+}
+
 function despacharParaConta(conta, acao, email, deps) {
   var options = deps || {};
+  var getPrimaryAccountIdFn =
+    options.getPrimaryAccountIdFn || getRoteadorFn_('getPrimaryAccountId', roteadorConfigModule);
+  var getSharedSecretFn =
+    options.getSharedSecretFn || getRoteadorFn_('getSharedSecret', roteadorConfigModule);
+  var primaryAccountId = getPrimaryAccountIdFn();
+
+  if (conta && conta.account_id && conta.account_id !== primaryAccountId) {
+    return chamarExecutorRemoto_(conta, acao, email, getSharedSecretFn());
+  }
+
   var acoes = {
     arq: options.arquivarFn || getRoteadorFn_('arquivar', roteadorExecutorModule),
     lix: options.moverParaLixeiraFn || getRoteadorFn_('moverParaLixeira', roteadorExecutorModule),
@@ -73,6 +123,7 @@ function processarDoPost(event, deps) {
   var getSharedSecretFn =
     options.getSharedSecretFn || getRoteadorFn_('getSharedSecret', roteadorConfigModule);
   var getEmailByIdFn = options.getEmailByIdFn || getRoteadorFn_('getEmailById', roteadorPlanilhaModule);
+  var listContasFn = options.listContasFn || getRoteadorFn_('listContas', roteadorPlanilhaModule);
   var responderCallbackFn =
     options.responderCallbackFn || getRoteadorFn_('responderCallback', roteadorTelegramModule);
   var despacharParaContaFn = options.despacharParaContaFn || despacharParaConta;
@@ -97,7 +148,8 @@ function processarDoPost(event, deps) {
     return criarRespostaJson_(200, { ok: true, idempotent: true });
   }
 
-  var resultado = despacharParaContaFn({ account_id: email.account_id }, parsed.acao, email, options);
+  var conta = obterContaDoEmail_(email, listContasFn());
+  var resultado = despacharParaContaFn(conta, parsed.acao, email, options);
   responderCallbackFn(callback.id, 'feito ✅');
   return criarRespostaJson_(200, { ok: true, result: resultado });
 }
@@ -113,5 +165,7 @@ if (typeof module !== 'undefined' && module.exports) {
     parseCallback,
     validarSecret,
     despacharParaConta,
+    montarUrlExecutor_,
+    parseExecutorResponse_,
   };
 }

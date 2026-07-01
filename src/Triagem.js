@@ -20,8 +20,26 @@ function getFn_(name, moduleRef) {
   return moduleRef[name];
 }
 
+function contaHabilitadaTriagem_(conta) {
+  return conta && conta.status === 'incluida' && ['F0', 'F2'].indexOf(conta.fase) >= 0;
+}
+
 function contaHabilitadaF0_(conta) {
   return conta && conta.status === 'incluida' && conta.fase === 'F0';
+}
+
+function indexarContasPorId_(contas) {
+  return (contas || []).reduce(function reduceContas(acc, conta) {
+    if (conta.account_id) acc[conta.account_id] = conta;
+    return acc;
+  }, {});
+}
+
+function filtrarContaDoProjeto_(contas, accountId) {
+  if (!accountId) return contas;
+  return (contas || []).filter(function filterConta(conta) {
+    return conta.account_id === accountId;
+  });
 }
 
 function indexarEmailsExistentes_(emails) {
@@ -48,9 +66,34 @@ function aplicarStatusTriado_(email) {
   return Object.assign({}, email, { status: 'triado' });
 }
 
-function aplicarAcoesF0_(email) {
+function normalizarAcao_(acao, email) {
+  if (acao === 'lixo') return 'lixeira';
+  if (acao) return acao;
+  if (email.categoria_sugerida === 'lixo') return 'lixeira';
+  if (email.categoria_sugerida === 'importante') return 'guardar';
+  return 'abrir';
+}
+
+function aplicarAcoesDisponiveis_(email) {
+  var acoes = (email.acoes_disponiveis || []).map(function mapAcao(acao) {
+    return normalizarAcao_(acao, email);
+  });
+  var acaoSugerida = normalizarAcao_(email.acao_sugerida, email);
+
+  if (acoes.indexOf(acaoSugerida) < 0) acoes.unshift(acaoSugerida);
+  if (acoes.indexOf('abrir') < 0) acoes.push('abrir');
+
   return Object.assign({}, email, {
-    acoes_disponiveis: ['arquivar', 'abrir'],
+    acoes_disponiveis: acoes.filter(function filterAcao(acao, index) {
+      return acao && acoes.indexOf(acao) === index;
+    }),
+  });
+}
+
+function aplicarOrigemConta_(email, conta) {
+  return Object.assign({}, email, {
+    account_email: conta.email || conta.account_id,
+    allow_delete: conta.allow_delete,
   });
 }
 
@@ -81,6 +124,7 @@ function executarTriagemDiaria(opcoes) {
   var classificarEmailsFn = opts.classificarEmailsFn || getFn_('classificarEmails', classificadorModule);
   var classificarComGeminiFn = opts.classificarComGeminiFn || getFn_('classificarComGemini', geminiModule);
   var getGeminiKeyFn = opts.getGeminiKeyFn || getFn_('getGeminiKey', configModule);
+  var getAccountIdFn = opts.getAccountIdFn || getFn_('getAccountId', configModule);
   var getTelegramChatIdFn = opts.getTelegramChatIdFn || getFn_('getTelegramChatId', configModule);
   var enviarMensagemFn = opts.enviarMensagemFn || getFn_('enviarMensagem', telegramModule);
   var formatarResumoFn = opts.formatarResumoFn || getFn_('formatarResumo', telegramModule);
@@ -93,7 +137,8 @@ function executarTriagemDiaria(opcoes) {
     return new Date();
   };
 
-  var contas = listContasFn().filter(contaHabilitadaF0_);
+  var contas = filtrarContaDoProjeto_(listContasFn().filter(contaHabilitadaTriagem_), getAccountIdFn());
+  var contasById = indexarContasPorId_(contas);
   var regras = listRegrasFn();
   var existentes = indexarEmailsExistentes_(listEmailsFn());
   var resultado = {
@@ -101,6 +146,7 @@ function executarTriagemDiaria(opcoes) {
     emails_triados: 0,
     por_categoria: {},
   };
+  var classificadosTodos = [];
 
   contas.forEach(function processConta(conta) {
     var coletados = coletarContaFn(conta).filter(function filterDuplicados(email) {
@@ -128,6 +174,7 @@ function executarTriagemDiaria(opcoes) {
     });
     var classificados = classificarEmailsFn(comIds, {
       conta: conta,
+      contasById: contasById,
       regras: regras,
       geminiFn: function geminiInjected(emails) {
         return classificarComGeminiFn(emails, getGeminiKeyFn(), { sleepFn: sleepFn });
@@ -136,21 +183,13 @@ function executarTriagemDiaria(opcoes) {
       delayEntreLotesMs: opts.delayEntreLotesMs || 1500,
     })
       .map(aplicarStatusTriado_)
-      .map(aplicarAcoesF0_);
+      .map(aplicarAcoesDisponiveis_)
+      .map(function applyConta(email) {
+        return aplicarOrigemConta_(email, conta);
+      });
 
-    var textoResumo = formatarResumoFn(agruparEmailsPorCategoriaFn(classificados), conta, nowFn());
-    var tecladoResumo = montarTecladoResumoFn(classificados);
-    var telegramResponse = enviarMensagemFn(getTelegramChatIdFn(), textoResumo, tecladoResumo);
-    var telegramMsgId =
-      telegramResponse &&
-      telegramResponse.result &&
-      (telegramResponse.result.message_id || telegramResponse.result.messageId);
-    var emailsParaFila = classificados.map(function markSent(email) {
-      return marcarEnviado_(email, telegramMsgId);
-    });
-
-    emailsParaFila.forEach(function appendClassificado(email) {
-      appendEmailFn(email);
+    classificados.forEach(function appendClassificado(email) {
+      classificadosTodos.push(email);
     });
 
     var porCategoria = contarPorCategoria_(classificados);
@@ -176,6 +215,27 @@ function executarTriagemDiaria(opcoes) {
     resultado.emails_triados += classificados.length;
   });
 
+  if (classificadosTodos.length) {
+    var textoResumo = formatarResumoFn(
+      agruparEmailsPorCategoriaFn(classificadosTodos),
+      { email: String(contas.length) + ' contas' },
+      nowFn(),
+    );
+    var tecladoResumo = montarTecladoResumoFn(classificadosTodos, contasById);
+    var telegramResponse = enviarMensagemFn(getTelegramChatIdFn(), textoResumo, tecladoResumo);
+    var telegramMsgId =
+      telegramResponse &&
+      telegramResponse.result &&
+      (telegramResponse.result.message_id || telegramResponse.result.messageId);
+    classificadosTodos
+      .map(function markSent(email) {
+        return marcarEnviado_(email, telegramMsgId);
+      })
+      .forEach(function appendClassificado(email) {
+        appendEmailFn(email);
+      });
+  }
+
   return resultado;
 }
 
@@ -183,6 +243,9 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     executarTriagemDiaria,
     contaHabilitadaF0_,
+    contaHabilitadaTriagem_,
     indexarEmailsExistentes_,
+    indexarContasPorId_,
+    filtrarContaDoProjeto_,
   };
 }

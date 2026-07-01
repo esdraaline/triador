@@ -21,6 +21,7 @@ var TRIADOR_STATUS_EMAIL = {
 };
 
 var TRIADOR_LABEL_CONTROLE = 'Triado_IA';
+var TRIADOR_PRIMARY_ACCOUNT_ID = 'josemardp_gmail';
 
 function getRequiredScriptProperty_(key) {
   var value = PropertiesService.getScriptProperties().getProperty(key);
@@ -48,6 +49,19 @@ function getSharedSecret() {
 
 function getSheetId() {
   return getRequiredScriptProperty_('SHEET_ID');
+}
+
+function getOptionalScriptProperty_(key, defaultValue) {
+  var value = PropertiesService.getScriptProperties().getProperty(key);
+  return value || defaultValue;
+}
+
+function getPrimaryAccountId() {
+  return getOptionalScriptProperty_('PRIMARY_ACCOUNT_ID', TRIADOR_PRIMARY_ACCOUNT_ID);
+}
+
+function getAccountId() {
+  return getOptionalScriptProperty_('ACCOUNT_ID', '');
 }
 
 function getNomesAbas() {
@@ -89,6 +103,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getTelegramChatId,
     getSharedSecret,
     getSheetId,
+    getPrimaryAccountId,
+    getAccountId,
     getNomesAbas,
     getCategorias,
     getStatusEmail,
