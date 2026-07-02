@@ -6,9 +6,15 @@ Triador é uma automação de triagem unificada de email em Google Apps Script: 
 
 MVP F0 em produção desde 29/06/2026.
 
-Sprints concluídos: S0 a S6, com F0 completo e deployado no Google Apps Script.
+Sprints concluídos: S0 a S8 (F0 completo, F1 ações seguras, F2 multi-conta implementada).
 
-Próximos sprints: S7, F1 ações seguras, em andamento.
+Rollout F2 (executores por conta), em andamento desde 01/07/2026:
+- `josemardp_gmail` (roteador): em produção.
+- `esdraaline_gmail`: executor implantado e testado.
+- `conta-comercial_gmail`: pendente.
+- `conta_familiar_gmail`: pendente.
+
+Próximos sprints: S9, F3 histórico de remetente + mute.
 
 ## Testes
 
