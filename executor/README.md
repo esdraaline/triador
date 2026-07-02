@@ -14,6 +14,7 @@ Crie um diretorio de deploy por conta e copie estes arquivos para a raiz configu
 - `src/Classificador.js`
 - `src/Gemini.js`
 - `src/Executor.js`
+- `src/Telegram.js`
 - `src/Triagem.js`
 - `src/Admin.js`
 - `executor/appsscript.json`
