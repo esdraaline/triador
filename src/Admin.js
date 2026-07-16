@@ -129,6 +129,8 @@ function healthCheck() {
   return {
     ok: true,
     app: 'Triador',
+    contract_version: '1.0.0',
+    automation_id: 'triador',
     timestamp: new Date().toISOString(),
   };
 }

@@ -1,10 +1,12 @@
 var executorPlanilhaModule = {};
 var executorTelegramModule = {};
 var executorConfigModule = {};
+var executorContratosModule = {};
 if (typeof module !== 'undefined' && module.exports) {
   executorPlanilhaModule = require('./Planilha');
   executorTelegramModule = require('./Telegram');
   executorConfigModule = require('./Config');
+  executorContratosModule = require('./Contratos');
 }
 
 function getExecutorFn_(name, moduleRef) {
@@ -74,6 +76,8 @@ function executarAcao_(email, acaoExecutada, textoSucesso, executarGmailFn, opco
   var getTelegramChatIdFn =
     opts.getTelegramChatIdFn || getExecutorFn_('getTelegramChatId', executorConfigModule);
   var getLabelControleFn = opts.getLabelControleFn || getExecutorFn_('getLabelControle', executorConfigModule);
+  var normalizarEventoAuditoriaFn =
+    opts.normalizarEventoAuditoriaFn || getExecutorFn_('normalizarEventoAuditoria', executorContratosModule);
   var nowFn = opts.nowFn || function now() {
     return new Date();
   };
@@ -88,15 +92,28 @@ function executarAcao_(email, acaoExecutada, textoSucesso, executarGmailFn, opco
     executado_em: executadoEm,
   });
 
-  appendLogFn({
+  var auditEvent = normalizarEventoAuditoriaFn({
     timestamp: executadoEm,
+    account_id: email.account_id,
+    id_interno: email.id_interno,
+    acao_sugerida: email.acao_sugerida || acaoExecutada,
+    acao_executada: acaoExecutada,
+    event_type: 'email_action',
+    action: acaoExecutada,
+    status: 'success',
+    sensitivity: email.sensitivity || 'personal',
+    idempotency_key: ['gmail', email.account_id, email.message_id || email.thread_id].join(':'),
+    resultado: 'ok',
+    erro: '',
+  }, { automationId: 'triador' });
+  appendLogFn(Object.assign({
     account_id: email.account_id,
     id_interno: email.id_interno,
     acao_sugerida: email.acao_sugerida || acaoExecutada,
     acao_executada: acaoExecutada,
     resultado: 'ok',
     erro: '',
-  });
+  }, auditEvent));
 
   if (email.telegram_msg_id) {
     editarMensagemFn(getTelegramChatIdFn(), email.telegram_msg_id, mensagemSucesso_(email, textoSucesso), {
