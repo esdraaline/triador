@@ -1,6 +1,8 @@
 var regrasModule = {};
+var politicasModule = {};
 if (typeof module !== 'undefined' && module.exports) {
   regrasModule = require('./Regras');
+  politicasModule = require('./Politicas');
 }
 
 var TAMANHO_LOTE_GEMINI = 30;
@@ -19,7 +21,11 @@ function contaDoEmail_(email, contexto) {
 }
 
 function politicaPermiteGemini_(conta) {
-  return conta && (conta.allow_ai_external === true || conta.allow_ai_external === 'true');
+  var fn =
+    typeof globalThis !== 'undefined' && typeof globalThis.politicaPermiteGemini === 'function'
+      ? globalThis.politicaPermiteGemini
+      : politicasModule.politicaPermiteGemini;
+  return fn(conta);
 }
 
 function montarAcoesDisponiveis_(resultado) {

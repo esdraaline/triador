@@ -17,6 +17,9 @@ var SHEET_SCHEMAS = {
     'allow_delete',
     'allow_unsubscribe',
     'allow_ai_external',
+    'sensitivity',
+    'ai_policy',
+    'uses_ai',
     'executor_url',
     'always_important_keywords',
   ],
@@ -149,6 +152,7 @@ function contaRowToObj(row, headers) {
   var conta = rowToObject_(row || [], headers || SHEET_SCHEMAS.Contas);
   conta.allow_delete = parseBoolean(conta.allow_delete);
   conta.allow_unsubscribe = parseBoolean(conta.allow_unsubscribe);
+  conta.uses_ai = parseBoolean(conta.uses_ai);
   conta.always_important_keywords = parseList(conta.always_important_keywords);
   return conta;
 }

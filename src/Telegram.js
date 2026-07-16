@@ -1,6 +1,8 @@
 var telegramConfigModule = {};
+var telegramPoliticasModule = {};
 if (typeof module !== 'undefined' && module.exports) {
   telegramConfigModule = require('./Config');
+  telegramPoliticasModule = require('./Politicas');
 }
 
 var TELEGRAM_API_BASE = 'https://api.telegram.org/bot';
@@ -118,6 +120,11 @@ function callbackByteLength_(value) {
 }
 
 function politicaPermiteAcao_(email, politica, acao) {
+  var fn =
+    typeof globalThis !== 'undefined' && typeof globalThis.politicaPermiteAcao === 'function'
+      ? globalThis.politicaPermiteAcao
+      : telegramPoliticasModule.politicaPermiteAcao;
+  if (!fn(email, acao)) return false;
   if (acao !== 'lixeira') return true;
   if (email && email.allow_delete === false) return false;
   if (politica && politica.allow_delete === false) return false;
