@@ -72,6 +72,9 @@ describe('Planilha - mapeamento puro', () => {
       'false',
       'true',
       '',
+      'allowed',
+      'true',
+      '',
       'banco, boleto; governo',
     ];
 
@@ -179,6 +182,9 @@ describe('Planilha - SpreadsheetApp mockado', () => {
       false,
       true,
       '',
+      'allowed',
+      true,
+      '',
       'banco,boleto',
     ]);
     spreadsheet
@@ -208,5 +214,39 @@ describe('Planilha - SpreadsheetApp mockado', () => {
       }),
     ]);
     expect(spreadsheet.__getSheet('Log').__getRows()).toHaveLength(2);
+  });
+
+  test('contaRowToObj preserva cabeçalho legado sem campos de política', () => {
+    const legacyHeaders = [
+      'account_id',
+      'email',
+      'provider',
+      'status',
+      'fase',
+      'risk_level',
+      'delete_mode',
+      'allow_delete',
+      'allow_unsubscribe',
+      'allow_ai_external',
+      'always_important_keywords',
+    ];
+    const row = [
+      'josemardp_gmail',
+      'conta-pessoal@exemplo.com',
+      'gmail',
+      'incluida',
+      'F0',
+      'low',
+      'trash_only',
+      true,
+      false,
+      true,
+      'banco,boleto',
+    ];
+
+    expect(contaRowToObj(row, legacyHeaders)).toMatchObject({
+      account_id: 'josemardp_gmail',
+      always_important_keywords: ['banco', 'boleto'],
+    });
   });
 });

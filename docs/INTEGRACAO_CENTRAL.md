@@ -17,3 +17,6 @@ de VPN, navegador, sistemas institucionais, OCR e geração de documentos.
 
 O contrato de divisão de responsabilidades continua em
 `central_automacoes/docs/ARQUITETURA_UNIFICADA.md`.
+
+O aceite técnico consolidado das seis fases está em
+`central_automacoes/docs/UNIFICACAO_STATUS.md`.
