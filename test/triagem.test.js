@@ -244,7 +244,7 @@ describe('Triagem diaria', () => {
     ]);
     expect(montarTecladoResumoFn.mock.calls[0][1]).toMatchObject({
       josemardp_gmail: expect.objectContaining({ allow_delete: true }),
-      conta-comercial_gmail: expect.objectContaining({ allow_delete: false }),
+      'conta-comercial_gmail': expect.objectContaining({ allow_delete: false }),
     });
   });
 });
